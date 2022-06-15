@@ -1,7 +1,7 @@
-import express, { json } from "express"
-import cors from "cors"
-import "dotenv/config"
-import mongodb from "mongodb"
+import express, { json } from 'express'
+import cors from 'cors'
+import 'dotenv/config'
+import mongodb from 'mongodb'
 
 const app = express()
 
@@ -9,7 +9,7 @@ app.use(json())
 
 app.use(
 	cors({
-		origin: "*",
+		origin: '*',
 	})
 )
 
@@ -21,14 +21,14 @@ const dbConnect = async () => {
 	let client = new mongodb.MongoClient(uri)
 	await client.connect()
 
-	database = client.db("collection")
+	database = client.db('collection')
 }
 
-app.post("/insert-moves", async (req, res) => {
+app.post('/insert-moves', async (req, res) => {
 	const data = req.body
 	const winnerMoves = data.winnerMoves
 	const lossesMoves = data.lossesMoves
-	const collection = database.collection("moves")
+	const collection = database.collection('moves')
 
 	try {
 		for (const move of winnerMoves) {
@@ -72,33 +72,37 @@ app.post("/insert-moves", async (req, res) => {
 	}
 })
 
-app.post("/choose", async (req, res) => {
+app.post('/choose', async (req, res) => {
 	const data = req.body
 	const possibleMoves = data.possibilities
 
 	const rightsAndLeftsArray = possibleMoves.map((move) => {
-		return { left: move.left, right: move.right }
+		return { left: move.piece.left, right: move.piece.right }
 	})
 
-	const collection = database.collection("moves")
+	const collection = database.collection('moves')
 	var higherPercentageDocument = 0
-	var result = []
+	var result = null
 
 	try {
 		for (const query of rightsAndLeftsArray) {
 			const dbMove = await collection.findOne(query)
 
 			const totalMatches = dbMove.winsCounter + dbMove.lossesCounter
-			const currentPercentage = dbMove.winnerMoves / totalMatches
+			const currentPercentage = dbMove.winsCounter / totalMatches
 			if (dbMove && currentPercentage > higherPercentageDocument) {
 				higherPercentageDocument = currentPercentage
-				result = dbMove
+				result = possibleMoves.find(
+					(move) =>
+						move.piece.left === dbMove.left &&
+						move.piece.right === dbMove.right
+				)
 			}
 		}
 	} catch (error) {
 		console.log(error)
 	}
-	return res.send(200).json(result)
+	return res.status(200).json(result)
 })
 
 const start = async (port) => {
@@ -106,7 +110,7 @@ const start = async (port) => {
 		await dbConnect()
 
 		app.listen(port, () => {
-			console.log("listening on port " + port)
+			console.log('listening on port ' + port)
 		})
 	} catch (error) {
 		console.log(error)
